@@ -18,7 +18,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
@@ -1175,13 +1177,15 @@ fun HomeScreen(
                         disintegrationRequest = continueWatchingDisintegrationRequest,
                     )
 
-                    if (aggregatedUiState.isEnabled && aggregatedUiState.items.isNotEmpty()) {
+                    if (
+                        aggregatedUiState.isEnabled &&
+                        (aggregatedUiState.items.isNotEmpty() || aggregatedUiState.isLoading)
+                    ) {
                         item(key = "aggregated_latest_additions", contentType = "catalog") {
                             com.nuvio.app.features.home.aggregate.AggregatedCatalogRowSection(
-                                items = aggregatedUiState.items,
+                                state = aggregatedUiState,
                                 modifier = Modifier.padding(bottom = 12.dp),
                                 sectionPadding = homeSectionPadding,
-                                isBusy = aggregatedUiState.isLoading || aggregatedUiState.isEnriching,
                                 onViewAllClick = onAggregatedViewAllClick,
                                 onPosterClick = onPosterClick,
                                 onPosterLongClick = onPosterLongClick,
@@ -1236,6 +1240,17 @@ fun HomeScreen(
                 }
             }
         }
+
+            // Pinned processing indicator: stays at the very top of Home for the whole
+            // Latest Additions pipeline (catalog fetch + TMDB metadata), gone when done.
+            if (aggregatedUiState.isEnabled && (aggregatedUiState.isLoading || aggregatedUiState.isEnriching)) {
+                com.nuvio.app.features.home.aggregate.AggregatedTopProgressBanner(
+                    state = aggregatedUiState,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .zIndex(10f),
+                )
+            }
     }
 }
 

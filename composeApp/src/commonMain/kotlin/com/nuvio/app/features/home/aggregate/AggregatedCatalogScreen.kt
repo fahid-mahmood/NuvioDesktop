@@ -65,6 +65,7 @@ fun AggregatedCatalogScreen(
     val nowEpochMs = EpisodeReleaseDatePlatform.nowEpochMs()
     val posterCardStyle = com.nuvio.app.core.ui.rememberPosterCardStyleUiState()
 
+    var selectedYear by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<Int?>(null) }
     var selectedIndustry by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var selectedGenre by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
     val industries = androidx.compose.runtime.remember(uiState.items) {
@@ -78,9 +79,15 @@ fun AggregatedCatalogScreen(
             .map { it.key }
             .filter { it.isNotBlank() }
     }
-    val visibleItems = androidx.compose.runtime.remember(uiState.items, selectedIndustry, selectedGenre) {
+    val years = androidx.compose.runtime.remember(uiState.items) {
+        uiState.items.mapNotNull { it.releaseYear }.groupingBy { it }.eachCount().entries
+            .sortedWith(compareByDescending<Map.Entry<Int, Int>> { it.key })
+            .map { it.key }
+    }
+    val visibleItems = androidx.compose.runtime.remember(uiState.items, selectedYear, selectedIndustry, selectedGenre) {
         uiState.items.filter { item ->
-            (selectedIndustry == null || item.industry == selectedIndustry) &&
+            (selectedYear == null || item.releaseYear == selectedYear) &&
+                (selectedIndustry == null || item.industry == selectedIndustry) &&
                 (selectedGenre == null || item.genres.any { it.equals(selectedGenre, ignoreCase = true) })
         }
     }
@@ -122,10 +129,13 @@ fun AggregatedCatalogScreen(
             if (industries.isNotEmpty() || genres.isNotEmpty()) {
                 item(key = "aggregated_filters", span = { GridItemSpan(maxLineSpan) }) {
                     AggregatedFilterBar(
+                        years = years,
                         industries = industries,
                         genres = genres,
+                        selectedYear = selectedYear,
                         selectedIndustry = selectedIndustry,
                         selectedGenre = selectedGenre,
+                        onYearSelected = { selectedYear = if (selectedYear == it) null else it },
                         onIndustrySelected = { selectedIndustry = if (selectedIndustry == it) null else it },
                         onGenreSelected = { selectedGenre = if (selectedGenre == it) null else it },
                     )
@@ -285,18 +295,39 @@ private fun PosterShape.toAggregatedPosterShape(): NuvioPosterShape =
 
 @Composable
 private fun AggregatedFilterBar(
+    years: List<Int>,
     industries: List<String>,
     genres: List<String>,
+    selectedYear: Int?,
     selectedIndustry: String?,
     selectedGenre: String?,
+    onYearSelected: (Int) -> Unit,
     onIndustrySelected: (String) -> Unit,
     onGenreSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val allLabel = stringResource(Res.string.aggregated_filter_all)
     Column(modifier = modifier.fillMaxWidth().padding(bottom = 4.dp)) {
-        if (industries.isNotEmpty()) {
+        if (years.isNotEmpty()) {
             FilterChipRow {
+                FilterChip(
+                    selected = selectedYear == null,
+                    onClick = { if (selectedYear != null) onYearSelected(selectedYear) },
+                    label = { Text(allLabel) },
+                    colors = FilterChipDefaults.filterChipColors(),
+                )
+                years.forEach { year ->
+                    FilterChip(
+                        selected = selectedYear == year,
+                        onClick = { onYearSelected(year) },
+                        label = { Text(year.toString()) },
+                        colors = FilterChipDefaults.filterChipColors(),
+                    )
+                }
+            }
+        }
+        if (industries.isNotEmpty()) {
+            FilterChipRow(topPadding = 6.dp) {
                 FilterChip(
                     selected = selectedIndustry == null,
                     onClick = { if (selectedIndustry != null) onIndustrySelected(selectedIndustry) },

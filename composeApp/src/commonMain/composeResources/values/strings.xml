@@ -778,6 +778,8 @@
     <string name="aggregated_industry_international">International</string>
     <string name="aggregated_industry_adult">18+</string>
     <string name="aggregated_enrich_progress">Updating metadata — %1$d of %2$d titles</string>
+    <string name="aggregated_status_fetching">Fetching your addon catalogs…</string>
+    <string name="aggregated_status_refreshing">Refreshing…</string>
     <string name="layout_hide_unreleased">Hide Unreleased Content</string>
     <string name="layout_hide_unreleased_sub">Hide movies and shows that haven't been released yet.</string>
     <string name="layout_catalog_type">Show Catalog Type</string>
