@@ -40,6 +40,14 @@ class TitleNormalizerTest {
     private fun extractReleaseInfoAndAssert(info: String): Int? = extractReleaseYear(info, null)
 
     @Test
+    fun extractsParenthesisedYearsFromTitles() {
+        assertEquals(2022, yearFromTitle("KGF Chapter 2 (2022)"))
+        assertEquals(2026, yearFromTitle("Some Movie (2026) 1080p"))
+        assertNull(yearFromTitle("Moana 2"))
+        assertNull(yearFromTitle("Sequel (3050)"))
+    }
+
+    @Test
     fun matchKeyPrefersImdbId() {
         val item = preview(id = "tt1187043", name = "3 Idiots", type = "movie")
         assertEquals("imdb:tt1187043", aggregateMatchKey(item))

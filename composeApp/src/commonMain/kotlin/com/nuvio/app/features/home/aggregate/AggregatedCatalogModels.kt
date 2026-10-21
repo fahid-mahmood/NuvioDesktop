@@ -16,9 +16,17 @@ data class AggregatedCatalogItem(
     val firstSeenEpochMs: Long,
     val lastSeenEpochMs: Long,
     val sources: List<AggregatedSourceRef>,
+    /** Release year from the source feed or TMDB enrichment; null until known. */
+    val releaseYear: Int? = null,
+    /** Spoken-language origin from TMDB, e.g. "hi", "en", "ta". */
+    val originalLanguage: String? = null,
+    val genres: List<String> = emptyList(),
 ) {
     val sourceCount: Int
         get() = sources.size
+
+    val industry: String?
+        get() = industryFor(originalLanguage, genres)
 }
 
 data class AggregatedCatalogUiState(
@@ -34,6 +42,39 @@ internal fun AggregatedCatalogItem.relativeAddedDays(nowEpochMs: Long): Long {
     val days = (nowEpochMs - firstSeenEpochMs) / MILLIS_PER_DAY
     return days.coerceAtLeast(0L)
 }
+
+/** Year released first (newest year at top, unknown years last), then newest upload. */
+internal val aggregatedItemComparator: Comparator<AggregatedCatalogItem> =
+    compareByDescending<AggregatedCatalogItem> { it.releaseYear ?: Int.MIN_VALUE }
+        .thenByDescending { it.firstSeenEpochMs }
+        .thenBy { it.preview.name.lowercase() }
+
+/**
+ * Maps a TMDB original language (plus animation genres) to an industry bucket for
+ * filtering. Returns null when the language is unknown.
+ */
+internal fun industryFor(originalLanguage: String?, genres: List<String>): String? {
+    if (originalLanguage == null) return null
+    val animated = genres.any { it.equals("Animation", ignoreCase = true) }
+    return when (originalLanguage.lowercase()) {
+        "hi" -> INDUSTRY_BOLLYWOOD
+        "en" -> INDUSTRY_HOLLYWOOD
+        "ta", "te", "ml", "kn" -> INDUSTRY_SOUTH_INDIAN
+        "ko" -> INDUSTRY_KOREAN
+        "ja" -> if (animated) INDUSTRY_ANIME else INDUSTRY_INTERNATIONAL
+        "zh", "cn" -> INDUSTRY_CHINESE
+        else -> INDUSTRY_INTERNATIONAL
+    }
+}
+
+/** Stable, localizable-later industry keys; also used to group filter chips. */
+internal const val INDUSTRY_BOLLYWOOD = "bollywood"
+internal const val INDUSTRY_HOLLYWOOD = "hollywood"
+internal const val INDUSTRY_SOUTH_INDIAN = "south_indian"
+internal const val INDUSTRY_KOREAN = "korean"
+internal const val INDUSTRY_ANIME = "anime"
+internal const val INDUSTRY_CHINESE = "chinese"
+internal const val INDUSTRY_INTERNATIONAL = "international"
 
 /** Renders an epoch-milliseconds timestamp as a stable "yyyy-MM-dd" label. */
 internal fun Long.toIsoDateLabel(): String {

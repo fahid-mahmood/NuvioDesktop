@@ -4,6 +4,8 @@ import com.nuvio.app.features.home.MetaPreview
 
 private val imdbIdRegex = Regex("""\b(tt\d{5,10})\b""")
 private val yearRegex = Regex("""\b(19|20)\d{2}\b""")
+private val titleYearRegex = Regex("""\(((?:19|20)\d{2})\)""")
+
 private val nonAlphanumericRegex = Regex("""[^a-z0-9]+""")
 private val combiningAccentRegex = Regex("""[\u0300-\u036f]""")
 private val collapsedWhitespaceRegex = Regex("""\s+""")
@@ -24,6 +26,13 @@ fun normalizeTitleForMatch(title: String): String {
 /** Extracts an IMDb id (tt1234567) from an addon item id such as "tt1234567" or "bridge%3Att1234567". */
 fun extractImdbId(id: String): String? =
     imdbIdRegex.find(id)?.groupValues?.get(1)?.lowercase()
+
+/** Year embedded in a title, e.g. "KGF Chapter 2 (2022)". Only parenthesised years count
+ * to avoid matching sequels like "Moana 2". */
+fun yearFromTitle(title: String): Int? {
+    val match = titleYearRegex.find(title) ?: return null
+    return match.groupValues[1].toIntOrNull()
+}
 
 /** Best-effort release year from releaseInfo ("2024" / "2024–2025") or an ISO release date. */
 fun extractReleaseYear(releaseInfo: String?, rawReleaseDate: String?): Int? {

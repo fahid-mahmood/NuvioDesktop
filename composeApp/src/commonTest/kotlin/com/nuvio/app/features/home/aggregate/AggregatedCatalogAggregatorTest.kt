@@ -150,6 +150,63 @@ class AggregatedCatalogAggregatorTest {
     }
 
     @Test
+    fun sortPrioritizesNewestReleaseYearThenNewestUpload() {
+        val now = 1_800_000_000_000L
+        val day = 24L * 60L * 60L * 1000L
+        val results = listOf(
+            fetchResult("com.addon.a", "Addon A", "tt0000001", "Old Known", "2001"),
+            fetchResult("com.addon.a", "Addon A", "tt0000002", "Recent Release", "2026"),
+            fetchResult("com.addon.a", "Addon A", "site-slug-no-year", "Unknown Year"),
+        )
+
+        val (items, _) = mergeAggregatedItems(results, StoredAggregatedRegistry(), now)
+
+        // 2026 first, then the dated 2001 title; year-less items sort last, upload ties broken by name.
+        assertEquals("Recent Release", items[0].preview.name)
+        assertEquals("Old Known", items[1].preview.name)
+        assertEquals("Unknown Year", items.last().preview.name)
+    }
+
+    @Test
+    fun industryBucketsMapFromLanguageAndGenres() {
+        assertEquals(INDUSTRY_BOLLYWOOD, industryFor("hi", emptyList()))
+        assertEquals(INDUSTRY_HOLLYWOOD, industryFor("en", emptyList()))
+        assertEquals(INDUSTRY_SOUTH_INDIAN, industryFor("ta", emptyList()))
+        assertEquals(INDUSTRY_SOUTH_INDIAN, industryFor("te", emptyList()))
+        assertEquals(INDUSTRY_KOREAN, industryFor("ko", emptyList()))
+        assertEquals(INDUSTRY_ANIME, industryFor("ja", listOf("Animation")))
+        assertEquals(INDUSTRY_INTERNATIONAL, industryFor("ja", emptyList()))
+        assertEquals(INDUSTRY_CHINESE, industryFor("zh", emptyList()))
+        assertEquals(INDUSTRY_INTERNATIONAL, industryFor("fr", emptyList()))
+        assertEquals(null, industryFor(null, emptyList()))
+    }
+
+    @Test
+    fun enrichmentPersistsAcrossRefreshes() {
+        val now = 1_800_000_000_000L
+        val registry = StoredAggregatedRegistry(
+            entries = listOf(
+                StoredAggregatedEntry(
+                    matchKey = "imdb:tt1187043",
+                    firstSeenEpochMs = now - 1,
+                    lastSeenEpochMs = now - 1,
+                    releaseYear = 2009,
+                    originalLanguage = "hi",
+                    genres = listOf("Comedy", "Drama"),
+                ),
+            ),
+        )
+        val results = listOf(fetchResult("com.addon.a", "Addon A", "tt1187043", "3 Idiots"))
+
+        val (items, nextRegistry) = mergeAggregatedItems(results, registry, now)
+
+        assertEquals(2009, items.first().releaseYear)
+        assertEquals(listOf("Comedy", "Drama"), items.first().genres)
+        assertEquals("hi", items.first().originalLanguage)
+        assertEquals(2009, nextRegistry.entries.first().releaseYear)
+    }
+
+    @Test
     fun isoDateLabelFormatsStableDates() {
         // 1_800_000_000_000 ms is 2027-01-15T08:00:00Z.
         assertEquals("2027-01-15", 1_800_000_000_000L.toIsoDateLabel())

@@ -34,6 +34,8 @@ object AggregatedCatalogRepository {
     private const val MAX_ITEMS_PER_SOURCE = 100
     private const val MAX_PAGES_PER_SOURCE = 2
     private const val SOURCE_FETCH_TIMEOUT_MS = 30_000L
+    private const val ENRICH_BATCH_LIMIT = 1200
+    private const val ENRICH_PUBLISH_EVERY = 25
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val persistenceMutex = Mutex()
@@ -44,6 +46,7 @@ object AggregatedCatalogRepository {
     private var registry: StoredAggregatedRegistry = StoredAggregatedRegistry()
     private var registryLoaded = false
     private var activeJob: Job? = null
+    private var enrichmentJob: Job? = null
     private var activeSourceKey: String? = null
     private var lastFetchedSourceKey: String? = null
 
@@ -109,7 +112,76 @@ object AggregatedCatalogRepository {
                 sourceCount = sources.size,
                 errorMessage = null,
             )
+            launchEnrichment()
         }
+    }
+
+    /**
+     * Fills in release year, language and genres via TMDB for items whose sources
+     * expose none, in polite background batches. Every enriched batch re-sorts the
+     * visible state (year-first ordering improves as data lands) and the enriched
+     * values are persisted so each title is looked up only once, ever.
+     */
+    private fun launchEnrichment() {
+        enrichmentJob?.cancel()
+        enrichmentJob = scope.launch {
+            var sincePublish = 0
+            val pending = _uiState.value.items
+                .filter { it.releaseYear == null || it.genres.isEmpty() }
+                .take(ENRICH_BATCH_LIMIT)
+            if (pending.isEmpty()) return@launch
+            log.i { "enrichment — looking up ${pending.size} titles on TMDB" }
+
+            val updated = _uiState.value.items.associateBy { it.matchKey }.toMutableMap()
+            pending.forEach { item ->
+                val enrichment = runCatching {
+                    AggregatedTmdbEnricher.enrich(
+                        title = item.preview.name,
+                        type = item.preview.type,
+                        yearHint = item.releaseYear,
+                    )
+                }.getOrNull()
+                if (enrichment != null && (enrichment.releaseYear != null || enrichment.genres.isNotEmpty())) {
+                    updated[item.matchKey] = item.copy(
+                        releaseYear = enrichment.releaseYear ?: item.releaseYear,
+                        originalLanguage = enrichment.originalLanguage ?: item.originalLanguage,
+                        genres = enrichment.genres.ifEmpty { item.genres },
+                    )
+                    registry = registry.updateEntry(item.matchKey) { entry ->
+                        entry.copy(
+                            releaseYear = enrichment.releaseYear ?: entry.releaseYear,
+                            originalLanguage = enrichment.originalLanguage ?: entry.originalLanguage,
+                            genres = enrichment.genres.ifEmpty { entry.genres },
+                        )
+                    }
+                    sincePublish++
+                    if (sincePublish % ENRICH_PUBLISH_EVERY == 0) {
+                        publishEnriched(updated.values.toList())
+                        persistRegistry()
+                        log.d { "enrichment — ${updated.size - _uiState.value.items.count { it.releaseYear == null }} resolved so far" }
+                    }
+                }
+            }
+            publishEnriched(updated.values.toList())
+            persistRegistry()
+            log.i { "enrichment — cycle complete" }
+        }
+    }
+
+    private fun publishEnriched(items: List<AggregatedCatalogItem>) {
+        _uiState.update { state ->
+            if (!state.isEnabled) state
+            else state.copy(items = items.sortedWith(aggregatedItemComparator))
+        }
+    }
+
+    private inline fun StoredAggregatedRegistry.updateEntry(
+        matchKey: String,
+        transform: (StoredAggregatedEntry) -> StoredAggregatedEntry,
+    ): StoredAggregatedRegistry {
+        val index = entries.indexOfFirst { it.matchKey == matchKey }
+        if (index < 0) return this
+        return copy(entries = entries.toMutableList().also { it[index] = transform(it[index]) })
     }
 
     fun setEnabled(enabled: Boolean) {

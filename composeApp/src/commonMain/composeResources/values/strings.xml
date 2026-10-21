@@ -768,6 +768,14 @@
     <string name="aggregated_added_on_date">Added %1$s</string>
     <string name="aggregated_sources_count_one">1 source</string>
     <string name="aggregated_sources_count">%1$d sources</string>
+    <string name="aggregated_filter_all">All</string>
+    <string name="aggregated_industry_bollywood">Bollywood</string>
+    <string name="aggregated_industry_hollywood">Hollywood</string>
+    <string name="aggregated_industry_south_indian">South Indian</string>
+    <string name="aggregated_industry_korean">Korean</string>
+    <string name="aggregated_industry_anime">Anime</string>
+    <string name="aggregated_industry_chinese">Chinese</string>
+    <string name="aggregated_industry_international">International</string>
     <string name="layout_hide_unreleased">Hide Unreleased Content</string>
     <string name="layout_hide_unreleased_sub">Hide movies and shows that haven't been released yet.</string>
     <string name="layout_catalog_type">Show Catalog Type</string>

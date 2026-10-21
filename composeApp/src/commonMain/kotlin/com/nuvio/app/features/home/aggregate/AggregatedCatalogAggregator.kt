@@ -35,6 +35,9 @@ internal data class StoredAggregatedEntry(
     val firstSeenEpochMs: Long,
     val lastSeenEpochMs: Long,
     val sourceAddonIds: List<String> = emptyList(),
+    val releaseYear: Int? = null,
+    val originalLanguage: String? = null,
+    val genres: List<String> = emptyList(),
 )
 
 @Serializable
@@ -156,7 +159,8 @@ internal fun mergeAggregatedItems(
 
     val mergedItems = finalBuckets.values.map { bucketItems ->
         val matchKey = bucketItems.first().bucketKey
-        val firstSeen = knownFirstSeen[matchKey]?.firstSeenEpochMs ?: nowEpochMs
+        val stored = knownFirstSeen[matchKey]
+        val firstSeen = stored?.firstSeenEpochMs ?: nowEpochMs
         val orderedSources = bucketItems
             .distinctBy { identity -> "${identity.sourceRef.addonId}:" + identity.item.id }
             .map { identity -> identity.sourceRef.copy(itemId = identity.item.id) }
@@ -166,11 +170,11 @@ internal fun mergeAggregatedItems(
             firstSeenEpochMs = firstSeen,
             lastSeenEpochMs = nowEpochMs,
             sources = orderedSources,
+            releaseYear = bucketItems.firstNotNullOfOrNull { it.year } ?: stored?.releaseYear,
+            originalLanguage = stored?.originalLanguage,
+            genres = stored?.genres.orEmpty(),
         )
-    }.sortedWith(
-        compareByDescending<AggregatedCatalogItem> { it.firstSeenEpochMs }
-            .thenBy { it.preview.name.lowercase() },
-    )
+    }.sortedWith(aggregatedItemComparator)
 
     val nextEntries = LinkedHashMap<String, StoredAggregatedEntry>()
     mergedItems.forEach { item ->
@@ -179,6 +183,9 @@ internal fun mergeAggregatedItems(
             firstSeenEpochMs = item.firstSeenEpochMs,
             lastSeenEpochMs = item.lastSeenEpochMs,
             sourceAddonIds = item.sources.map { it.addonId }.distinct(),
+            releaseYear = item.releaseYear,
+            originalLanguage = item.originalLanguage,
+            genres = item.genres,
         )
     }
 
@@ -204,6 +211,7 @@ private fun identitiesFor(result: AggregatedFetchResult): List<SourceItemIdentit
         val imdbId = extractImdbId(item.id)
         val titleBase = titleBaseKey(item)
         val year = extractReleaseYear(item.releaseInfo, item.rawReleaseDate)
+            ?: yearFromTitle(item.name)
         val bucketKey = when {
             imdbId != null -> "imdb:$imdbId"
             year != null -> "$titleBase|$year"
