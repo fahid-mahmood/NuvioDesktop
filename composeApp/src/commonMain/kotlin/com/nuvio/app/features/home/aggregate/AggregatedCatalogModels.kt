@@ -21,12 +21,14 @@ data class AggregatedCatalogItem(
     /** Spoken-language origin from TMDB, e.g. "hi", "en", "ta". */
     val originalLanguage: String? = null,
     val genres: List<String> = emptyList(),
+    /** The source marked this title "[18+]" or similar. */
+    val isAdult: Boolean = false,
 ) {
     val sourceCount: Int
         get() = sources.size
 
     val industry: String?
-        get() = industryFor(originalLanguage, genres)
+        get() = if (isAdult) INDUSTRY_ADULT else industryFor(originalLanguage, genres)
 }
 
 data class AggregatedCatalogUiState(
@@ -35,6 +37,10 @@ data class AggregatedCatalogUiState(
     val items: List<AggregatedCatalogItem> = emptyList(),
     val sourceCount: Int = 0,
     val errorMessage: String? = null,
+    /** Background TMDB metadata pass is running. */
+    val isEnriching: Boolean = false,
+    val enrichResolved: Int = 0,
+    val enrichTotal: Int = 0,
 )
 
 internal fun AggregatedCatalogItem.relativeAddedDays(nowEpochMs: Long): Long {
@@ -68,6 +74,7 @@ internal fun industryFor(originalLanguage: String?, genres: List<String>): Strin
 }
 
 /** Stable, localizable-later industry keys; also used to group filter chips. */
+internal const val INDUSTRY_ADULT = "adult"
 internal const val INDUSTRY_BOLLYWOOD = "bollywood"
 internal const val INDUSTRY_HOLLYWOOD = "hollywood"
 internal const val INDUSTRY_SOUTH_INDIAN = "south_indian"

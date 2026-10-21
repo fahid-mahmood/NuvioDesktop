@@ -207,6 +207,37 @@ class AggregatedCatalogAggregatorTest {
     }
 
     @Test
+    fun suffixedDuplicatesMergeIntoOneBucket() {
+        val now = 1_800_000_000_000L
+        val results = listOf(
+            fetchResult("com.addon.a", "Addon A", "site-animals-nf", "Animals (2026) Netflix"),
+            fetchResult("com.addon.b", "Addon B", "site-animals-plain", "Animals (2026)"),
+        )
+
+        val (items, _) = mergeAggregatedItems(results, StoredAggregatedRegistry(), now)
+
+        assertEquals(1, items.size)
+        assertEquals(2, items.first().sources.size)
+        assertEquals(2026, items.first().releaseYear)
+    }
+
+    @Test
+    fun adultTitlesMergeCleanedAndAreFlagged() {
+        val now = 1_800_000_000_000L
+        val results = listOf(
+            fetchResult("com.addon.a", "Addon A", "site-blue", "[18+] Blue (2026) Primewire"),
+            fetchResult("com.addon.b", "Addon B", "site-blue-2", "Blue (2026)"),
+        )
+
+        val (items, _) = mergeAggregatedItems(results, StoredAggregatedRegistry(), now)
+
+        assertEquals(1, items.size)
+        assertEquals(true, items.first().isAdult)
+        assertEquals(INDUSTRY_ADULT, items.first().industry)
+        assertEquals("Blue (2026)", items.first().preview.name)
+    }
+
+    @Test
     fun isoDateLabelFormatsStableDates() {
         // 1_800_000_000_000 ms is 2027-01-15T08:00:00Z.
         assertEquals("2027-01-15", 1_800_000_000_000L.toIsoDateLabel())

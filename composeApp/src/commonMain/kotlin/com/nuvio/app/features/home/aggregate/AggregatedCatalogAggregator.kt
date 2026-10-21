@@ -38,6 +38,7 @@ internal data class StoredAggregatedEntry(
     val releaseYear: Int? = null,
     val originalLanguage: String? = null,
     val genres: List<String> = emptyList(),
+    val isAdult: Boolean = false,
 )
 
 @Serializable
@@ -84,6 +85,7 @@ private data class SourceItemIdentity(
     val year: Int?,
     val item: MetaPreview,
     val sourceRef: AggregatedSourceRef,
+    val isAdult: Boolean,
 )
 
 /**
@@ -166,13 +168,14 @@ internal fun mergeAggregatedItems(
             .map { identity -> identity.sourceRef.copy(itemId = identity.item.id) }
         AggregatedCatalogItem(
             matchKey = matchKey,
-            preview = bucketItems.map { it.item }.reduce(::pickPrimaryPreview),
+            preview = bucketItems.map { it.item }.reduce(::pickPrimaryPreview).withCleanedName(),
             firstSeenEpochMs = firstSeen,
             lastSeenEpochMs = nowEpochMs,
             sources = orderedSources,
             releaseYear = bucketItems.firstNotNullOfOrNull { it.year } ?: stored?.releaseYear,
             originalLanguage = stored?.originalLanguage,
             genres = stored?.genres.orEmpty(),
+            isAdult = bucketItems.any { it.isAdult } || (stored?.isAdult ?: false),
         )
     }.sortedWith(aggregatedItemComparator)
 
@@ -186,6 +189,7 @@ internal fun mergeAggregatedItems(
             releaseYear = item.releaseYear,
             originalLanguage = item.originalLanguage,
             genres = item.genres,
+            isAdult = item.isAdult,
         )
     }
 
@@ -220,8 +224,9 @@ private fun identitiesFor(result: AggregatedFetchResult): List<SourceItemIdentit
         SourceItemIdentity(
             bucketKey = bucketKey,
             titleBaseKey = titleBase,
-            year = year,
+            year = year ?: yearFromTitle(item.name),
             item = item,
+            isAdult = isAdultTitle(item.name),
             sourceRef = AggregatedSourceRef(
                 addonId = result.source.definition.key.substringBefore(':'),
                 addonName = result.source.addonName,
@@ -234,6 +239,10 @@ private fun identitiesFor(result: AggregatedFetchResult): List<SourceItemIdentit
 
 private fun titleBaseKey(item: MetaPreview): String =
     "t:${normalizeTitleForMatch(item.name)}|${item.type}"
+
+/** Card title without adult markers or trailing source/quality tags. */
+private fun MetaPreview.withCleanedName(): MetaPreview =
+    copy(name = displayTitle(name))
 
 /** Prefers an IMDb-id preview so details open against a universal id when one source has it. */
 private fun pickPrimaryPreview(current: MetaPreview, candidate: MetaPreview): MetaPreview {

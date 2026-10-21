@@ -27,6 +27,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -111,6 +112,10 @@ fun AggregatedCatalogScreen(
             item(key = "aggregated_header", span = { GridItemSpan(maxLineSpan) }) {
                 AggregatedCatalogHeader(
                     sourceCount = uiState.sourceCount,
+                    isLoading = uiState.isLoading,
+                    isEnriching = uiState.isEnriching,
+                    enrichResolved = uiState.enrichResolved,
+                    enrichTotal = uiState.enrichTotal,
                     onBack = onBack,
                 )
             }
@@ -153,6 +158,10 @@ fun AggregatedCatalogScreen(
 @Composable
 private fun AggregatedCatalogHeader(
     sourceCount: Int,
+    isLoading: Boolean,
+    isEnriching: Boolean,
+    enrichResolved: Int,
+    enrichTotal: Int,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -194,6 +203,23 @@ private fun AggregatedCatalogHeader(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (isLoading || isEnriching) {
+            Spacer(modifier = Modifier.height(10.dp))
+            if (isEnriching && enrichTotal > 0) {
+                LinearProgressIndicator(
+                    progress = { (enrichResolved.toFloat() / enrichTotal).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(Res.string.aggregated_enrich_progress, enrichResolved, enrichTotal),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
@@ -239,6 +265,7 @@ internal fun addedSourceLine(item: AggregatedCatalogItem, nowEpochMs: Long): Str
 /** Localized display label for an industry bucket key. */
 @Composable
 internal fun industryLabel(industry: String): String = when (industry) {
+    INDUSTRY_ADULT -> stringResource(Res.string.aggregated_industry_adult)
     INDUSTRY_BOLLYWOOD -> stringResource(Res.string.aggregated_industry_bollywood)
     INDUSTRY_HOLLYWOOD -> stringResource(Res.string.aggregated_industry_hollywood)
     INDUSTRY_SOUTH_INDIAN -> stringResource(Res.string.aggregated_industry_south_indian)
@@ -294,7 +321,7 @@ private fun AggregatedFilterBar(
                     label = { Text(allLabel) },
                     colors = FilterChipDefaults.filterChipColors(),
                 )
-                genres.take(18).forEach { genre ->
+                genres.forEach { genre ->
                     FilterChip(
                         selected = selectedGenre.equals(genre, ignoreCase = true),
                         onClick = { onGenreSelected(genre) },

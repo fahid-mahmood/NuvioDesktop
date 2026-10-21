@@ -2,12 +2,16 @@ package com.nuvio.app.features.home.aggregate
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.time.EpisodeReleaseDatePlatform
 import com.nuvio.app.core.ui.NuvioPosterCard
 import com.nuvio.app.core.ui.NuvioPosterShape
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.LinearProgressIndicator
 import com.nuvio.app.core.ui.NuvioShelfSection
 import com.nuvio.app.core.ui.NuvioViewAllPillSize
 import com.nuvio.app.core.ui.desktopCatalogShelfPosterBaseWidthDp
@@ -27,34 +31,48 @@ fun AggregatedCatalogRowSection(
     items: List<AggregatedCatalogItem>,
     modifier: Modifier = Modifier,
     sectionPadding: Dp,
+    isBusy: Boolean = false,
     onViewAllClick: (() -> Unit)? = null,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
 ) {
-    if (items.isEmpty()) return
+    // Adult titles stay reachable via the See-All 18+ filter but never lead on Home.
+    val content = items.filterNot { it.isAdult }
+    if (content.isEmpty()) return
     val previewLimit = if (isDesktop) ROW_PREVIEW_LIMIT_DESKTOP else ROW_PREVIEW_LIMIT_MOBILE
-    val entries = items.take(previewLimit)
+    val entries = content.take(previewLimit)
     val nowEpochMs = EpisodeReleaseDatePlatform.nowEpochMs()
 
-    NuvioShelfSection(
-        title = stringResource(Res.string.aggregated_latest_title),
-        entries = entries,
-        modifier = modifier.fillMaxWidth(),
-        headerHorizontalPadding = sectionPadding,
-        rowContentPadding = PaddingValues(horizontal = sectionPadding),
-        onViewAllClick = onViewAllClick,
-        onTitleClick = onViewAllClick?.takeIf { isDesktop },
-        viewAllPillSize = NuvioViewAllPillSize.Compact,
-        key = { item -> item.matchKey },
-    ) { item ->
-        AggregatedPosterCard(
-            item = item,
-            nowEpochMs = nowEpochMs,
-            onClick = onPosterClick?.let { callback -> { callback(item.preview) } },
-            onLongClick = onPosterLongClick?.let { callback -> { callback(item.preview) } },
-        )
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (isBusy) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = sectionPadding)
+                    .padding(bottom = 4.dp),
+            )
+        }
+        NuvioShelfSection(
+            title = stringResource(Res.string.aggregated_latest_title),
+            entries = entries,
+            modifier = Modifier.fillMaxWidth(),
+            headerHorizontalPadding = sectionPadding,
+            rowContentPadding = PaddingValues(horizontal = sectionPadding),
+            onViewAllClick = onViewAllClick,
+            onTitleClick = onViewAllClick?.takeIf { isDesktop },
+            viewAllPillSize = NuvioViewAllPillSize.Compact,
+            key = { item -> item.matchKey },
+        ) { item ->
+            AggregatedPosterCard(
+                item = item,
+                nowEpochMs = nowEpochMs,
+                onClick = onPosterClick?.let { callback -> { callback(item.preview) } },
+                onLongClick = onPosterLongClick?.let { callback -> { callback(item.preview) } },
+            )
+        }
     }
 }
+
 
 @Composable
 private fun AggregatedPosterCard(

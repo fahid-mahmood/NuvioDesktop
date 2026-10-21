@@ -126,17 +126,19 @@ object AggregatedCatalogRepository {
         enrichmentJob?.cancel()
         enrichmentJob = scope.launch {
             var sincePublish = 0
+            var resolved = 0
             val pending = _uiState.value.items
                 .filter { it.releaseYear == null || it.genres.isEmpty() }
                 .take(ENRICH_BATCH_LIMIT)
             if (pending.isEmpty()) return@launch
             log.i { "enrichment — looking up ${pending.size} titles on TMDB" }
+            _uiState.update { it.copy(isEnriching = true, enrichResolved = 0, enrichTotal = pending.size) }
 
             val updated = _uiState.value.items.associateBy { it.matchKey }.toMutableMap()
             pending.forEach { item ->
                 val enrichment = runCatching {
                     AggregatedTmdbEnricher.enrich(
-                        title = item.preview.name,
+                        title = titleForSearch(item.preview.name),
                         type = item.preview.type,
                         yearHint = item.releaseYear,
                     )
@@ -154,16 +156,21 @@ object AggregatedCatalogRepository {
                             genres = enrichment.genres.ifEmpty { entry.genres },
                         )
                     }
+                    resolved++
                     sincePublish++
+                    _uiState.update { it.copy(enrichResolved = resolved) }
                     if (sincePublish % ENRICH_PUBLISH_EVERY == 0) {
                         publishEnriched(updated.values.toList())
                         persistRegistry()
-                        log.d { "enrichment — ${updated.size - _uiState.value.items.count { it.releaseYear == null }} resolved so far" }
                     }
+                } else {
+                    resolved++
+                    _uiState.update { it.copy(enrichResolved = resolved) }
                 }
             }
             publishEnriched(updated.values.toList())
             persistRegistry()
+            _uiState.update { it.copy(isEnriching = false, enrichResolved = 0, enrichTotal = 0) }
             log.i { "enrichment — cycle complete" }
         }
     }

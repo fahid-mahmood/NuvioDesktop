@@ -1181,6 +1181,7 @@ fun HomeScreen(
                                 items = aggregatedUiState.items,
                                 modifier = Modifier.padding(bottom = 12.dp),
                                 sectionPadding = homeSectionPadding,
+                                isBusy = aggregatedUiState.isLoading || aggregatedUiState.isEnriching,
                                 onViewAllClick = onAggregatedViewAllClick,
                                 onPosterClick = onPosterClick,
                                 onPosterLongClick = onPosterLongClick,
