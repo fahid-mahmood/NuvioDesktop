@@ -108,6 +108,9 @@ import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeRepository
+import com.nuvio.app.features.home.aggregate.AggregatedCatalogRepository
+import com.nuvio.app.features.home.aggregate.AggregatedCatalogScreen
+import com.nuvio.app.navigation.AggregatedCatalogRoute
 import com.nuvio.app.features.home.buildAddonCatalogRefreshSignature
 import com.nuvio.app.features.home.components.shouldBlurContinueWatchingArtwork
 import com.nuvio.app.features.library.LibraryItem
@@ -408,6 +411,7 @@ internal fun MainAppContent(
         if (enabledAddons.isWaitingForFirstEnabledManifest()) return@LaunchedEffect
         HomeCatalogSettingsRepository.syncCatalogs(enabledAddons)
         HomeRepository.refresh(enabledAddons)
+        AggregatedCatalogRepository.refresh(enabledAddons)
         ServerMatcher.warm()
     }
 
@@ -1404,6 +1408,7 @@ internal fun MainAppContent(
                         actions = { isTabletLayout ->
                             AppTabActions(
                                 onCatalogClick = onCatalogClick,
+                                onAggregatedViewAllClick = { navController.navigate(AggregatedCatalogRoute()) },
                                 onPosterClick = navController::openPreview,
                                 onPosterLongClick = { meta ->
                                     openPosterActions(PosterActionTarget(preview = meta))
@@ -1645,6 +1650,14 @@ internal fun MainAppContent(
                         route = route,
                         navController = navController,
                         onPosterLongClick = openPosterActions,
+                    )
+                }
+                entry<AggregatedCatalogRoute> { route ->
+                    val aggregatedOnBack = rememberGuardedPopBackStack(navController, route)
+                    AggregatedCatalogScreen(
+                        onBack = aggregatedOnBack,
+                        onPosterClick = navController::openPreview,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
                 entry<HomescreenSettingsRoute> { route ->

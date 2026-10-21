@@ -164,6 +164,7 @@ internal data class AppTabRequests(
 
 internal data class AppTabActions(
     val onCatalogClick: ((HomeCatalogSection) -> Unit)? = null,
+    val onAggregatedViewAllClick: (() -> Unit)? = null,
     val onPosterClick: ((MetaPreview) -> Unit)? = null,
     val onPosterLongClick: ((MetaPreview) -> Unit)? = null,
     val onLibraryPosterClick: ((LibraryItem) -> Unit)? = null,
@@ -242,6 +243,7 @@ internal fun AppTabHost(
                         animateCollectionGifs = state.tabsRouteActiveState.value && selectedTab == AppScreenTab.Home,
                         scrollToTopRequests = requests.homeScrollToTopRequests,
                         onCatalogClick = actions.onCatalogClick,
+                        onAggregatedViewAllClick = actions.onAggregatedViewAllClick,
                         onPosterClick = actions.onPosterClick,
                         onPosterLongClick = actions.onPosterLongClick,
                         onContinueWatchingClick = actions.onContinueWatchingClick,

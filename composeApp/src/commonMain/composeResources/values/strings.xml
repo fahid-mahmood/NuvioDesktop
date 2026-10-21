@@ -758,6 +758,16 @@
     <string name="settings_homescreen_selected_count">%1$d of %2$d selected</string>
     <string name="settings_homescreen_show_hero">Show Hero Section</string>
     <string name="settings_homescreen_show_hero_description">Display hero carousel at top of home.</string>
+    <string name="settings_homescreen_aggregated_row">Latest Additions Row</string>
+    <string name="settings_homescreen_aggregated_row_description">Merge every addon catalog into one deduplicated row, sorted by date added.</string>
+    <string name="aggregated_latest_title">Latest Additions</string>
+    <string name="aggregated_latest_subtitle">Deduplicated across %1$d addon catalogs</string>
+    <string name="aggregated_added_today">Added today</string>
+    <string name="aggregated_added_yesterday">Added yesterday</string>
+    <string name="aggregated_added_days_ago">Added %1$d days ago</string>
+    <string name="aggregated_added_on_date">Added %1$s</string>
+    <string name="aggregated_sources_count_one">1 source</string>
+    <string name="aggregated_sources_count">%1$d sources</string>
     <string name="layout_hide_unreleased">Hide Unreleased Content</string>
     <string name="layout_hide_unreleased_sub">Hide movies and shows that haven't been released yet.</string>
     <string name="layout_catalog_type">Show Catalog Type</string>

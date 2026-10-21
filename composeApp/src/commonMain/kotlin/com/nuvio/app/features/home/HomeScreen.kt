@@ -123,6 +123,7 @@ fun HomeScreen(
     animateCollectionGifs: Boolean = true,
     scrollToTopRequests: Flow<Unit> = emptyFlow(),
     onCatalogClick: ((HomeCatalogSection) -> Unit)? = null,
+    onAggregatedViewAllClick: (() -> Unit)? = null,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
@@ -148,6 +149,7 @@ fun HomeScreen(
 
     val addonsUiState by AddonRepository.uiState.collectAsStateWithLifecycle()
     val homeUiState by HomeRepository.uiState.collectAsStateWithLifecycle()
+    val aggregatedUiState by com.nuvio.app.features.home.aggregate.AggregatedCatalogRepository.uiState.collectAsStateWithLifecycle()
     val homeSettingsUiState by HomeCatalogSettingsRepository.uiState.collectAsStateWithLifecycle()
     val homeListState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
     val continueWatchingListState = rememberLazyListState()
@@ -909,7 +911,9 @@ fun HomeScreen(
             item.isCollection && collectionsMap[item.key] != null
         }
     }
-    val hasRenderableHomeRows = homeUiState.sections.isNotEmpty() || hasRenderableCollectionRows
+    val hasRenderableHomeRows = homeUiState.sections.isNotEmpty() ||
+        hasRenderableCollectionRows ||
+        (aggregatedUiState.isEnabled && aggregatedUiState.items.isNotEmpty())
     val showHeroSlot = shouldShowHomeHeroSlot(
         heroEnabled = homeSettingsUiState.heroEnabled,
         hasHeroItems = homeUiState.heroItems.isNotEmpty(),
@@ -1170,6 +1174,19 @@ fun HomeScreen(
                         onItemLongPress = onContinueWatchingLongPress,
                         disintegrationRequest = continueWatchingDisintegrationRequest,
                     )
+
+                    if (aggregatedUiState.isEnabled && aggregatedUiState.items.isNotEmpty()) {
+                        item(key = "aggregated_latest_additions", contentType = "catalog") {
+                            com.nuvio.app.features.home.aggregate.AggregatedCatalogRowSection(
+                                items = aggregatedUiState.items,
+                                modifier = Modifier.padding(bottom = 12.dp),
+                                sectionPadding = homeSectionPadding,
+                                onViewAllClick = onAggregatedViewAllClick,
+                                onPosterClick = onPosterClick,
+                                onPosterLongClick = onPosterLongClick,
+                            )
+                        }
+                    }
 
                     keyedEnabledHomeItems.forEach { keyedSettingsItem ->
                         val settingsItem = keyedSettingsItem.value

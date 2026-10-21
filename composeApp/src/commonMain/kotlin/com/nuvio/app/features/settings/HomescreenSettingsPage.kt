@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.NuvioActionLabel
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.NuvioToastController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsItem
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
@@ -65,6 +66,7 @@ import nuvio.composeapp.generated.resources.settings_homescreen_show_hero
 import nuvio.composeapp.generated.resources.settings_homescreen_show_hero_description
 import nuvio.composeapp.generated.resources.settings_homescreen_summary
 import nuvio.composeapp.generated.resources.settings_homescreen_summary_hint
+import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -90,6 +92,9 @@ internal fun LazyListScope.homescreenSettingsContent(
         )
     }
     item {
+        val aggregatedRowEnabled = com.nuvio.app.features.home.aggregate.AggregatedCatalogRepository.uiState
+            .collectAsStateWithLifecycle()
+            .value.isEnabled
         SettingsSection(
             title = stringResource(Res.string.settings_homescreen_section_hero),
             isTablet = isTablet,
@@ -117,6 +122,16 @@ internal fun LazyListScope.homescreenSettingsContent(
                     checked = hideUnreleasedContent,
                     isTablet = isTablet,
                     onCheckedChange = HomeCatalogSettingsRepository::setHideUnreleasedContent,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_homescreen_aggregated_row),
+                    description = stringResource(Res.string.settings_homescreen_aggregated_row_description),
+                    checked = aggregatedRowEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = { enabled ->
+                        com.nuvio.app.features.home.aggregate.AggregatedCatalogRepository.setEnabled(enabled)
+                    },
                 )
             }
         }
